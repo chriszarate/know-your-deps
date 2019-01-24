@@ -23,7 +23,7 @@ function getAuthors( { author, contributors, maintainers, ...yo } ) {
 	if ( 'string' === typeof author && author.trim().length ) {
 		const output = author.replace( / *\([^\)]+\)/, '' ); // Remove author URLs.
 		if ( output.includes( 'Sindre Sorhus' ) ) {
-			return `${output}  ${yellow( '<== It\'s you know who again!' )}`;
+			return `${output}  ${yellow( '<== It\'s you-know-who again!' )}`;
 		}
 
 		return output;
@@ -78,7 +78,7 @@ function getDateDiff ( date ) {
 }
 
 // Get started.
-console.log( '\nHow much do you know about your dependencies? Let\'s pick one at random.\n' );
+console.log( bold( '\nHow much do you know about your dependencies? Let\'s pick one at random.\n' ) );
 
 // Parse dependency tree.
 parse( 'root', package );
@@ -86,8 +86,8 @@ parse( 'root', package );
 // Get random item from set.
 const winner = [ ...pkgs ][ Math.floor( Math.random() * pkgs.size ) ];
 
-console.log( `I chose ${green.bold( winner )} from ${yellow.bold( pkgs.size )} unique packages!` );
-console.log( bold( 'Let me tell you a little bit about this package...\n' ) );
+console.log( `OK. I chose ${green.bold( winner )} from ${yellow.bold( pkgs.size )} unique packages!` );
+console.log( 'Let me tell you a little bit about this package...\n' );
 
 // Get info about the package from npm.
 exec( `npm view ${winner} --json`, ( err, stdout ) => {
