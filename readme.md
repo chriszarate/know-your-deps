@@ -9,7 +9,7 @@ whole point of this.
 
 ```sh
 cd my-hot-shit-js-project
-npx run know-your-deps
+npx know-your-deps
 ```
 
 It looks for a `package-lock.json` in the folder you run it in.

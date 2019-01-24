@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { bold, green, red, underline, yellow } = require( 'chalk' );
 const { exec } = require( 'child_process' );
 
