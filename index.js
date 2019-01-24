@@ -2,6 +2,8 @@
 
 const { bold, green, red, underline, yellow } = require( 'chalk' );
 const { exec } = require( 'child_process' );
+const path = require( 'path' );
+const package = require( path.resolve( __dirname, 'package-lock.json' ) );
 
 const pkgs = new Set();
 
@@ -19,7 +21,7 @@ function parse ( name, { dependencies: deps, version } ) {
 
 function getAuthors( { author, contributors, maintainers, ...yo } ) {
 	if ( 'string' === typeof author && author.trim().length ) {
-		const output = author.replace( /\(http[^\)]+\)/, '' ); // Remove author URLs.
+		const output = author.replace( / *\([^\)]+\)/, '' ); // Remove author URLs.
 		if ( output.includes( 'Sindre Sorhus' ) ) {
 			return `${output}  ${yellow( '<== It\'s you know who again!' )}`;
 		}
@@ -36,7 +38,7 @@ function getAuthors( { author, contributors, maintainers, ...yo } ) {
 	}
 	console.log( author, contributors, maintainers, yo );
 
-	return red.bold( 'It' );
+	return red.bold( 'Who even wrote this???' );
 }
 
 function getLicense( { license, licenses } ) {
@@ -69,7 +71,7 @@ function getDateDiff ( date ) {
 	const days = diffInDays % 365;
 
 	if ( years > 3 ) {
-		return `${years} years, ${days} days ${red.bold( '<== Pretty darn old in JS years!' )}`;
+		return `${years} years, ${days} days  ${red.bold( '<== Pretty darn old in JS years!' )}`;
 	}
 
 	return `${years} years, ${days} days`;
@@ -79,7 +81,7 @@ function getDateDiff ( date ) {
 console.log( '\nHow much do you know about your dependencies? Let\'s pick one at random.\n' );
 
 // Parse dependency tree.
-parse( 'root', require( './package-lock.json' ) );
+parse( 'root', package );
 
 // Get random item from set.
 const winner = [ ...pkgs ][ Math.floor( Math.random() * pkgs.size ) ];
