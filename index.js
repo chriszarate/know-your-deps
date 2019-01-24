@@ -106,5 +106,5 @@ exec( `npm view ${winner} --json`, ( err, stdout ) => {
 	console.log( `Authors: ${getAuthors( crap )}` );
 	console.log( `License: ${getLicense( crap )}` );
 	console.log( `Package age: ${getDateDiff( created )}` );
-	console.log( `Version age: ${getDateDiff( modified )}` );
+	console.log( `Version age: ${getDateDiff( modified )}\n` );
 } );
