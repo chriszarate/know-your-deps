@@ -3,7 +3,7 @@
 const { bold, green, red, underline, yellow } = require( 'chalk' );
 const { exec } = require( 'child_process' );
 const path = require( 'path' );
-const package = require( path.resolve( __dirname, 'package-lock.json' ) );
+const package = require( path.resolve( process.cwd(), 'package-lock.json' ) );
 
 const pkgs = new Set();
 
