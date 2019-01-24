@@ -1,7 +1,7 @@
 # Know Your Dependencies!
 
-This is a silly command-line NPM module that picks a random dependency from
-your project and gives you some info about it.
+This is a command-line NPM module that picks a random dependency from your
+project and gives you some info about it.
 
 You probably have a lot of dependencies that you've never heard of and you have
 absolutely no idea what they do. Is that a good thing? Probably not.
