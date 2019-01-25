@@ -41,7 +41,7 @@ function parseYarn ( lockfile ) {
 	var match, name, version;
 
 	Object.keys( lock ).forEach( package => {
-		while ( match = re.exec( package ) ) {
+		if ( match = re.exec( package ) ) {
 			name = match[1];
 			version = lock[package].version;
 			if ( name && version ) {
