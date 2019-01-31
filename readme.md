@@ -24,4 +24,7 @@ cd my-hot-shit-js-project
 know-your-deps
 ```
 
+Thanks to [Hal][hal] for the PR.
+
 [blog-post]: https://chris.zarate.org/know-your-dependencies
+[hal]: https://hal.codes/
