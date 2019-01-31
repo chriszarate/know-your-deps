@@ -2,10 +2,26 @@
 
 const { bold, green, red, underline, yellow } = require( 'chalk' );
 const { exec } = require( 'child_process' );
+const yarn = require( '@yarnpkg/lockfile' );
 const path = require( 'path' );
-const package = require( path.resolve( process.cwd(), 'package-lock.json' ) );
+const fs = require( 'fs' );
 
 const pkgs = new Set();
+
+function fetchPackages() {
+	try {
+		const package = require( path.resolve( process.cwd(), 'package-lock.json' ) );
+		parse( 'root', package ); 
+	} catch(e) {
+		try {
+			const package = path.resolve( process.cwd(), 'yarn.lock' );
+			const lockfile = fs.readFileSync(package, 'utf8');
+			parseYarn( lockfile );
+		} catch(e) {
+			throw('Your lockfile is missing.');
+		}
+	}
+}
 
 function parse ( name, { dependencies: deps, version } ) {
 	if ( 'root' !== name ) {
@@ -17,6 +33,22 @@ function parse ( name, { dependencies: deps, version } ) {
 	}
 
 	Object.keys( deps ).forEach( dep => parse( dep, deps[ dep ] ) );
+}
+
+function parseYarn ( lockfile ) {
+	const re = /([^\s~\'!()*":^]+)@\^?[0-9]/g;
+	const lock = yarn.parse(lockfile).object;
+	var match, name, version;
+
+	Object.keys( lock ).forEach( package => {
+		if ( match = re.exec( package ) ) {
+			name = match[1];
+			version = lock[package].version;
+			if ( name && version ) {
+				pkgs.add( `${name}@${version}` );
+			}
+		}
+	 })
 }
 
 function getAuthors( { author, contributors, maintainers, ...yo } ) {
@@ -91,44 +123,46 @@ function npmExec ( command ) {
 }
 
 // Get started.
-console.log( bold( '\nHow much do you know about your dependencies? Let\'s pick one at random.\n' ) );
+try {
+	fetchPackages();
+	console.log( bold( '\nHow much do you know about your dependencies? Let\'s pick one at random.\n' ) );
 
-// Parse dependency tree.
-parse( 'root', package );
+	// Get random item from set.
+	const winner = [ ...pkgs ][ Math.floor( Math.random() * pkgs.size ) ];
 
-// Get random item from set.
-const winner = [ ...pkgs ][ Math.floor( Math.random() * pkgs.size ) ];
+	console.log( `OK. I chose ${green.bold( winner )} from ${yellow.bold( pkgs.size )} deduped packages!` );
+	console.log( 'Let me tell you a little bit about this package...\n' );
 
-console.log( `OK. I chose ${green.bold( winner )} from ${yellow.bold( pkgs.size )} deduped packages!` );
-console.log( 'Let me tell you a little bit about this package...\n' );
+	// Get info about the package from npm.
+	const npmView = npmExec( `view ${winner} --json` );
+	const npmTree = npmExec( `ls ${winner.substr( 0, winner.lastIndexOf( '@' ) )}` );
 
-// Get info about the package from npm.
-const npmView = npmExec( `view ${winner} --json` );
-const npmTree = npmExec( `ls ${winner.substr( 0, winner.lastIndexOf( '@' ) )}` );
+	npmView 
+		.then( info => {
+			const {
+				description,
+				name,
+				homepage,
+				time: { created, modified },
+				...crap
+			} = JSON.parse( info );
 
-npmView
-	.then( info => {
-		const {
-			description,
-			name,
-			homepage,
-			time: { created, modified },
-			...crap
-		} = JSON.parse( info );
+			console.log( `${bold( name )}\n${new Array( name.length ).fill( '=' ).join( '' )}` );
+			console.log( description, '\n' );
+			homepage && console.log( underline( homepage ), '\n' );
+			console.log( `Authors: ${getAuthors( crap )}` );
+			console.log( `License: ${getLicense( crap )}` );
+			console.log( `Package age: ${getDateDiff( created )}` );
+			console.log( `Version age: ${getDateDiff( modified )}\n` );
 
-		console.log( `${bold( name )}\n${new Array( name.length ).fill( '=' ).join( '' )}` );
-		console.log( description, '\n' );
-		homepage && console.log( underline( homepage ), '\n' );
-		console.log( `Authors: ${getAuthors( crap )}` );
-		console.log( `License: ${getLicense( crap )}` );
-		console.log( `Package age: ${getDateDiff( created )}` );
-		console.log( `Version age: ${getDateDiff( modified )}\n` );
+			console.log( bold( 'Here\'s how this package is used in your project:\n' ) );
 
-		console.log( bold( 'Here\'s how this package is used in your project:\n' ) );
-
-		return npmTree
-			.then( tree => console.log( tree.trim() ) )
-			.catch();
-	} )
-	.catch( () => console.error( red.bold( `I'm sorry, I couldn't find any information about ${winner}.\n` ) ) )
-	.then( () => console.log( '\nHave a nice day! Run this again to learn about another package!' ) );
+			return npmTree
+				.then( tree => console.log( tree.trim() ) )
+				.catch();
+		} )
+		.catch( () => console.error( red.bold( `I'm sorry, I couldn't find any information about ${winner}.\n` ) ) )
+		.then( () => console.log( '\nHave a nice day! Run this again to learn about another package!' ) );
+} catch(e) {
+	 console.error( red.bold( `\n${e}` ) );
+}

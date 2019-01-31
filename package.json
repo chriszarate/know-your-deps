@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/chriszarate/know-your-deps#readme",
   "dependencies": {
+    "@yarnpkg/lockfile": "^1.1.0",
     "chalk": "^2.4.2"
   }
 }

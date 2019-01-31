@@ -16,6 +16,12 @@ It looks for a `package-lock.json` in the folder you run it in.
 
 ## But I use Yarn.
 
-Well, aren't you fancy. Make a PR, Mr. Big Britches.
+Well, aren't you fancy.
+
+```sh
+yarn global add know-your-deps
+cd my-hot-shit-js-project
+know-your-deps
+```
 
 [blog-post]: https://chris.zarate.org/know-your-dependencies
