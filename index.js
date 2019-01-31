@@ -8,19 +8,25 @@ const fs = require( 'fs' );
 
 const pkgs = new Set();
 
+const npmLockPath = path.resolve( process.cwd(), 'package-lock.json' );
+const yarnLockPath = path.resolve( process.cwd(), 'yarn.lock' );
+
+let isNpm = false;
+
 function fetchPackages() {
-	try {
-		const package = require( path.resolve( process.cwd(), 'package-lock.json' ) );
-		parse( 'root', package ); 
-	} catch(e) {
-		try {
-			const package = path.resolve( process.cwd(), 'yarn.lock' );
-			const lockfile = fs.readFileSync(package, 'utf8');
-			parseYarn( lockfile );
-		} catch(e) {
-			throw('Your lockfile is missing.');
-		}
+	if ( fs.existsSync( npmLockPath ) ) {
+		const npmLock = require( npmLockPath );
+		isNpm = true;
+		parse( 'root', npmLock );
 	}
+
+	if ( fs.existsSync( yarnLockPath ) ) {
+		const yarnLock = fs.readFileSync( yarnLockPath, 'utf8' );
+		return parseYarn( yarn.parse( yarnLock ) );
+	}
+
+	console.error( red.bold( 'Could not find package-lock.json or yarn.lock.' ) );
+	process.exit( 1 );
 }
 
 function parse ( name, { dependencies: deps, version } ) {
@@ -35,20 +41,8 @@ function parse ( name, { dependencies: deps, version } ) {
 	Object.keys( deps ).forEach( dep => parse( dep, deps[ dep ] ) );
 }
 
-function parseYarn ( lockfile ) {
-	const re = /([^\s~\'!()*":^]+)@\^?[0-9]/g;
-	const lock = yarn.parse(lockfile).object;
-	var match, name, version;
-
-	Object.keys( lock ).forEach( package => {
-		if ( match = re.exec( package ) ) {
-			name = match[1];
-			version = lock[package].version;
-			if ( name && version ) {
-				pkgs.add( `${name}@${version}` );
-			}
-		}
-	 })
+function parseYarn ( { object } ) {
+	Object.keys( object ).forEach( dep => pkgs.add( dep.replace( /@\^/, '@' ) ) );
 }
 
 function getAuthors( { author, contributors, maintainers, ...yo } ) {
@@ -68,7 +62,6 @@ function getAuthors( { author, contributors, maintainers, ...yo } ) {
 	if ( Array.isArray( maintainers ) && maintainers.length ) {
 		return maintainers.join( ', ' );
 	}
-	console.log( author, contributors, maintainers, yo );
 
 	return red.bold( 'Who even wrote this???' );
 }
@@ -109,6 +102,28 @@ function getDateDiff ( date ) {
 	return `${years} years, ${days} days`;
 }
 
+function getUsagePromise ( winner ) {
+	const name = winner.substr( 0, winner.lastIndexOf( '@' ) );
+
+	if ( isNpm ) {
+		return npmExec( `ls ${name}` )
+			.then( tree => tree.trim() )
+			.catch( () => red.bold( 'Could not get usage information from NPM.' ) );
+	}
+
+	return yarnExec( `why ${name} --json` )
+		.then( info => info.trim().split( /[\n\r]/ ).map( line => JSON.parse( line ) ) )
+		.then( lines => {
+			const list = lines.find( ( { type } ) => 'list' === type );
+			if ( list ) {
+				return list.data.items.map( item => item.replace( /"/g, '' ).replace( /#/g, ' => ' ) ).join( '\n' );
+			}
+
+			return `${name} is a direct dependency of the project.`;
+		} )
+		.catch( (err) => err );
+}
+
 function npmExec ( command ) {
 	return new Promise( ( resolve, reject ) => {
 		exec( `npm ${command} --prefix "${process.cwd()}"`, ( err, stdout ) => {
@@ -122,47 +137,54 @@ function npmExec ( command ) {
 	} );
 }
 
-// Get started.
-try {
-	fetchPackages();
-	console.log( bold( '\nHow much do you know about your dependencies? Let\'s pick one at random.\n' ) );
+function yarnExec ( command ) {
+	return new Promise( ( resolve, reject ) => {
+		exec( `yarn ${command} --cwd "${process.cwd()}"`, ( err, stdout ) => {
+			if ( err ) {
+				reject( err );
+				return;
+			}
 
-	// Get random item from set.
-	const winner = [ ...pkgs ][ Math.floor( Math.random() * pkgs.size ) ];
-
-	console.log( `OK. I chose ${green.bold( winner )} from ${yellow.bold( pkgs.size )} deduped packages!` );
-	console.log( 'Let me tell you a little bit about this package...\n' );
-
-	// Get info about the package from npm.
-	const npmView = npmExec( `view ${winner} --json` );
-	const npmTree = npmExec( `ls ${winner.substr( 0, winner.lastIndexOf( '@' ) )}` );
-
-	npmView 
-		.then( info => {
-			const {
-				description,
-				name,
-				homepage,
-				time: { created, modified },
-				...crap
-			} = JSON.parse( info );
-
-			console.log( `${bold( name )}\n${new Array( name.length ).fill( '=' ).join( '' )}` );
-			console.log( description, '\n' );
-			homepage && console.log( underline( homepage ), '\n' );
-			console.log( `Authors: ${getAuthors( crap )}` );
-			console.log( `License: ${getLicense( crap )}` );
-			console.log( `Package age: ${getDateDiff( created )}` );
-			console.log( `Version age: ${getDateDiff( modified )}\n` );
-
-			console.log( bold( 'Here\'s how this package is used in your project:\n' ) );
-
-			return npmTree
-				.then( tree => console.log( tree.trim() ) )
-				.catch();
-		} )
-		.catch( () => console.error( red.bold( `I'm sorry, I couldn't find any information about ${winner}.\n` ) ) )
-		.then( () => console.log( '\nHave a nice day! Run this again to learn about another package!' ) );
-} catch(e) {
-	 console.error( red.bold( `\n${e}` ) );
+			resolve( stdout );
+		} );
+	} );
 }
+
+// Get started.
+fetchPackages();
+
+console.log( bold( '\nHow much do you know about your dependencies? Let\'s pick one at random.\n' ) );
+
+// Get random item from set.
+const winner = [ ...pkgs ][ Math.floor( Math.random() * pkgs.size ) ];
+
+console.log( `OK. I chose ${green.bold( winner )} from ${yellow.bold( pkgs.size )} deduped packages!` );
+console.log( 'Let me tell you a little bit about this package...\n' );
+
+// Get info about the package usage from npm or yarn.
+const usagePromise = getUsagePromise( winner );
+
+// Get info about the package from npm.
+npmExec( `view ${winner} --json` )
+	.then( info => {
+		const {
+			description,
+			name,
+			homepage,
+			time: { created, modified },
+			...crap
+		} = JSON.parse( info );
+
+		console.log( `${bold( name )}\n${new Array( name.length ).fill( '=' ).join( '' )}` );
+		console.log( description, '\n' );
+		homepage && console.log( underline( homepage ), '\n' );
+		console.log( `Authors: ${getAuthors( crap )}` );
+		console.log( `License: ${getLicense( crap )}` );
+		console.log( `Package age: ${getDateDiff( created )}` );
+		console.log( `Version age: ${getDateDiff( modified )}\n` );
+
+		console.log( bold( 'Here\'s how this package is used in your project:\n' ) );
+	} )
+	.catch( () => console.error( red.bold( `I'm sorry, I couldn't find any information about ${winner}.\n` ) ) )
+	.then( () =>	usagePromise.then( console.log ) )
+	.then( () => console.log( '\nHave a nice day! Run this again to learn about another package!' ) );
