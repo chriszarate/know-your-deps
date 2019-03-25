@@ -17,7 +17,7 @@ function fetchPackages() {
 	if ( fs.existsSync( npmLockPath ) ) {
 		const npmLock = require( npmLockPath );
 		isNpm = true;
-		parse( 'root', npmLock );
+		return parse( 'root', npmLock );
 	}
 
 	if ( fs.existsSync( yarnLockPath ) ) {
